@@ -24,42 +24,52 @@ if [ "$1" = '-h' ] || [ "$1" = '--help' ] ; then
   exit 0
 fi
 
-# make sure we are inside a git repo
-if ! git status >/dev/null ; then
-  exit 1
-fi
-
 if [ "$1" ] ; then
   # make sure realpath won't error out
-  if [ "`realpath --relative-to="$(git rev-parse --show-toplevel)" "$1" 2>&1 | wc -l`" -gt 1 ] ; then
+  if [ "`realpath -e "$1" 2>&1 | wc -l`" -gt 1 ] ; then
     usage
     exit 1
   fi
+
+  # path argument might be a repository root
+  if [ -d "$1/.git" ] ; then
+    dir="`realpath -e "$1"`"
+  else
+    file="`realpath -e "$1"`"
+    dir="`dirname "$file"`"
+  fi
+else
+  dir="$PWD"
+fi
+
+# make sure we are inside a git repo
+if ! git -C "$dir" status >/dev/null ; then
+  exit 1
 fi
 
 # find the first ancestor that exists upstream
 for (( i=0 ; ; i++ )) ; do
-  if [ "`git branch -r --contains HEAD~$i`" ] ; then
+  if [ "`git -C "$dir" branch -r --contains HEAD~$i`" ] ; then
     break
   fi
 done
 
-if [ "$1" ] ; then
-  url=$(git remote get-url origin | \
+if [ "$file" ] ; then
+  url=$(git -C "$dir" remote get-url origin | \
     sed -e 's/^git@github.com:/https:\/\/github.com\//' | \
-    sed -e "s/\.git$/\/blob\/$(git rev-parse HEAD~$i)/")
+    sed -e "s/\.git$/\/blob\/$(git -C "$dir" rev-parse HEAD~$i)/")
 
   # resolve path argument relative to the repository root
-  url+="/$(realpath --relative-to=$(git rev-parse --show-toplevel) "$1")"
+  url+="/$(realpath --relative-to=$(git -C "$dir" rev-parse --show-toplevel) "$file")"
 
   if [ "$2" ] ; then
     # append line number argument
     url+="#L$2"
   fi
 else
-  url=$(git remote get-url origin | \
+  url=$(git -C "$dir" remote get-url origin | \
     sed -e 's/^git@github.com:/https:\/\/github.com\//' | \
-    sed -e "s/\.git$/\/tree\/$(git rev-parse HEAD~$i)/")
+    sed -e "s/\.git$/\/tree\/$(git -C "$dir" rev-parse HEAD~$i)/")
 fi
 
 echo "$url" | sed -e 's/%/%25/' | sed -e 's/ /%20/'
