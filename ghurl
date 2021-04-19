@@ -56,7 +56,7 @@ done
 
 if [ "$file" ] ; then
   url=$(git -C "$dir" remote get-url origin | \
-    sed -e 's/^git@github.com:/https:\/\/github.com\//' | \
+    sed -e 's/^\(ssh:\/\/\)\?git@github.com[/:]/https:\/\/github.com\//' | \
     sed -e "s/\.git$/\/blob\/$(git -C "$dir" rev-parse HEAD~$i)/")
 
   # resolve path argument relative to the repository root
@@ -68,7 +68,7 @@ if [ "$file" ] ; then
   fi
 else
   url=$(git -C "$dir" remote get-url origin | \
-    sed -e 's/^git@github.com:/https:\/\/github.com\//' | \
+    sed -e 's/^\(ssh:\/\/\)\?git@github.com[/:]/https:\/\/github.com\//' | \
     sed -e "s/\.git$/\/tree\/$(git -C "$dir" rev-parse HEAD~$i)/")
 fi
 
