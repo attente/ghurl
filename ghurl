@@ -15,7 +15,7 @@
 # limitations under the License.
 
 usage() {
-  echo Usage: `basename "$0"` [FILE [LINE]]
+  echo Usage: "$(basename "$0")" [FILE [LINE]]
   echo Print a URL to a GitHub repository or source file.
 }
 
@@ -26,17 +26,17 @@ fi
 
 if [ "$1" ] ; then
   # make sure realpath won't error out
-  if [ "`realpath -e "$1" |& wc -l`" -gt 1 ] ; then
+  if [ "$(realpath -e "$1" 2>&1 | wc -l)" -gt 1 ] ; then
     usage
     exit 1
   fi
 
   # path argument might be a repository root
   if [ -d "$1/.git" ] ; then
-    dir="`realpath -e "$1"`"
+    dir="$(realpath -e "$1")"
   else
-    file="`realpath -e "$1"`"
-    dir="`dirname "$file"`"
+    file="$(realpath -e "$1")"
+    dir="$(dirname "$file")"
   fi
 else
   dir="$PWD"
@@ -48,10 +48,12 @@ if ! git -C "$dir" status >/dev/null ; then
 fi
 
 # find the first ancestor that exists upstream
-for (( i=0 ; ; i++ )) ; do
-  if [ "`git -C "$dir" branch -r --contains HEAD~$i`" ] ; then
+i=0
+while true ; do
+  if [ "$(git -C "$dir" branch -r --contains HEAD~$i)" ] ; then
     break
   fi
+  i="$((i+1))"
 done
 
 if [ "$file" ] ; then
@@ -60,11 +62,11 @@ if [ "$file" ] ; then
     sed -e "s/\.git$/\/blob\/$(git -C "$dir" rev-parse HEAD~$i)/")
 
   # resolve path argument relative to the repository root
-  url+="/$(realpath --relative-to=$(git -C "$dir" rev-parse --show-toplevel) "$file")"
+  url="${url}/$(realpath --relative-to="$(git -C "$dir" rev-parse --show-toplevel)" "$file")"
 
   if [ "$2" ] ; then
     # append line number argument
-    url+="#L$2"
+    url="${url}#L$2"
   fi
 else
   url=$(git -C "$dir" remote get-url origin | \
